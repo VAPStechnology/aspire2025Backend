@@ -103,7 +103,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
 /////////////////////////////////////////////////////////////////////////////////////
 
 const uploadDocuments = asyncHandler(async (req, res) => {
-  const { name, email, phone } = req.body;
+  const { name, email, phone,avatar, aadhaar, signature } = req.body;
 
   // === Validate Fields ===
   if (!name?.trim() || !email?.trim() || !phone?.trim()) {
@@ -123,12 +123,12 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   }
 
   // === Extract File Paths ===
-  const photoPath = req.files?.photo?.[0]?.path || null;
-  const aadhaarPath = req.files?.aadhaar?.[0]?.path || null;
-  const signaturePath = req.files?.signature?.[0]?.path || null;
+  // const photoPath = req.files?.photo?.[0]?.path || null;
+  // const aadhaarPath = req.files?.aadhaar?.[0]?.path || null;
+  // const signaturePath = req.files?.signature?.[0]?.path || null;
 
-  if (!photoPath || !aadhaarPath || !signaturePath) {
-    throw new ApiError(400, 'All files (photo, aadhaar, signature) are required.');
+  if (!avatar || !aadhaar || !signature) {
+    throw new ApiError(400, 'All files (avatar, aadhaar, signature) are required.');
   }
 
   // === Find or Create ===
@@ -138,18 +138,18 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     userDoc.set({
       name,
       phone,
-      aadhaar: aadhaarPath || userDoc.aadhaar,
-      photo: photoPath || userDoc.photo,
-      signature: signaturePath || userDoc.signature,
+      aadhaar: aadhaar || userDoc.aadhaar,
+      photo: avatar || userDoc.photo,
+      signature: signature || userDoc.signature,
     });
   } else {
     userDoc = await UserDocument.create({
       name,
       email,
       phone,
-      aadhaar: aadhaarPath,
-      photo: photoPath,
-      signature: signaturePath,
+      aadhaar: aadhaar,
+      photo: avatar,
+      signature: signature,
     });
   }
 
