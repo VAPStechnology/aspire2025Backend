@@ -17,6 +17,7 @@ import {
 import protect from '../middleware/authMiddleware.js';
 // import upload from '../middleware/upload.js';
 import checkEmailVerified from '../middleware/checkEmailVerified.js';
+import checkBlacklist from '../middleware/checkBlacklist.js'; // Import the blacklist middleware
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.post('/verify-otp', verifyOtp);
 router.post('/upload',checkEmailVerified,uploadDocuments);
 
 // Form Routes (User)
-router.post('/forms', protect, createForm);                         // Create new form
+router.post('/forms', protect,checkBlacklist, createForm);                         // Create new form
 router.get('/forms/:id', protect, getFormsByUserId);                      // Get form by ID
 router.put('/forms/:id/update', protect, updateForm);                       // Update form
 router.patch('/forms/:id/submit', protect, submitForm);              // Submit form

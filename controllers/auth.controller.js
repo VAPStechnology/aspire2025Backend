@@ -6,6 +6,7 @@ import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import sendMail from '../config/nodemailer.js';
+import BlacklistedToken from '../models/blacklistedToken.model.js';
 
 // Helper function for email validation
 const isValidEmail = (email) => {
@@ -118,16 +119,74 @@ const login = asyncHandler(async (req, res) => {
   await user.save();
 
   // Create JWT token
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  const token = jwt.sign(
+    { id: user._id },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' } // or '2h', '7d' etc.
+  );
 
-  res.json(new ApiResponse(200, { token, id:user._id, isAdmin: user.isAdmin }, 'Login successful'));
+  res.json(new ApiResponse(200, { token, id: user._id, isAdmin: user.isAdmin }, 'Login successful'));
 });
 
 // Logout user
+// const logout = asyncHandler(async (req, res) => {
+//   res.clearCookie('token');
+//   res.json(new ApiResponse(200, null, 'Logout successful'));
+// });
 const logout = asyncHandler(async (req, res) => {
-  res.clearCookie('token');
-  res.json(new ApiResponse(200, null, 'Logout successful'));
+  const authHeader = req.headers.authorization;
+  console.log('Auth Header:', authHeader);
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new ApiError(400, 'Authorization token not provided');
+  }
+
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+
+      ignoreExpiration: true, // Allows blacklisting even if token has expired
+    });
+    console.log("Decoded JWT:", decoded); // <-- ADD THIS
+
+    if (!decoded?.id || !decoded?.exp) {
+      throw new ApiError(400, 'Invalid token structure');
+    }
+
+    const expiresAt = new Date(decoded.exp * 1000);
+
+    if (isNaN(expiresAt.getTime())) {
+      throw new ApiError(400, 'Invalid expiration time in token');
+    }
+
+    // Add token to blacklist for invalidation
+    await BlacklistedToken.create({ token, expiresAt });
+
+    // Optionally clear any saved refresh tokens if used
+    await User.findByIdAndUpdate(decoded.id, {
+      $unset: { refreshToken: 1 },
+    });
+
+    // Send clean logout response
+    return res
+      .status(200)
+      .clearCookie('accessToken')
+      .clearCookie('refreshToken')
+      .json(new ApiResponse(200, null, 'Logged out successfully'));
+
+  } catch (error) {
+    console.error('Logout error:', error.message);
+    throw new ApiError(400, 'Invalid or expired token');
+  }
 });
+
+
+
+
+
 
 // Update user profile (for admin)
 const updateUserProfile = asyncHandler(async (req, res) => {
