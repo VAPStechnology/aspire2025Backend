@@ -33,6 +33,12 @@ configDotenv({ path: './config/.env' });
 // Connect to MongoDB
 connectDB();
 
+// CORS Configuration for credentials
+const corsOptions = {
+    origin: 'http://localhost:5173',  // Your frontend URL
+    credentials: true,                // Allow credentials (cookies, etc.)
+  };
+
 // Middleware
 app.use(cors());
 app.use(cookieParser());
