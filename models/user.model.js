@@ -17,8 +17,12 @@ const userSchema = new mongoose.Schema(
     },
     aadhaar: {
       type: String,
+      required: [true, 'Aadhaar number is required'],
+      length: [12, 'Aadhaar number should be 12 digits'],
     },
-    avatar: String,
+    avatar: {
+      type: String,
+    },
     agreementSigned: {
       type: Boolean,
       default: false,
@@ -35,12 +39,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    loginLogs: [Date],
+    loginLogs: [
+      {
+        type: Date,
+      },
+    ],
+    token: {  // Add token field for storing JWT
+      type: String,
+      default: null,
+    },
   },
   {
-    timestamps: true, // adds createdAt and updatedAt fields
+    timestamps: true, // Automatically add createdAt and updatedAt fields
   }
 );
 
 const User = mongoose.model('User', userSchema);
-export default User; // Use ES6 export for consistency
+export default User;

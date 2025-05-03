@@ -1,4 +1,3 @@
-// auth.controller.js
 import User from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -19,6 +18,44 @@ const isValidPhone = (phone) => {
   const phoneRegex = /^[6-9]\d{9}$/; // Indian mobile numbers
   return phoneRegex.test(phone);
 };
+
+// Generate JWT token (Access Token)
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '1d' }); // Access token expires in 1 day
+};
+
+// Generate Refresh Token
+const generateRefreshToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' }); // Refresh token expires in 7 days
+};
+
+
+// Verify Token
+const verifyToken = asyncHandler(async(req,res)=>{
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new ApiError(400, 'Authorization token not provided');
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if the token is blacklisted
+    const blacklistedToken = await BlacklistedToken.findOne({ token });
+    if (blacklistedToken) {
+      throw new ApiError(400, 'Token is blacklisted');
+    }
+
+    // Return a response with token validity information
+    res.json(new ApiResponse(200, { isValid: true, decoded }, 'Token is valid'));
+  } catch (error) {
+    console.error('Token verification error:', error.message);
+    throw new ApiError(400, 'Invalid or expired token');
+  }
+});
 
 // Register new user
 const register = asyncHandler(async (req, res) => {
@@ -55,7 +92,11 @@ const register = asyncHandler(async (req, res) => {
   // Create new user
   const user = await User.create({ name, email, phone, password: hashedPassword, aadhaar, isAdmin });
 
-  res.status(201).json(new ApiResponse(200, user, 'User registered successfully'));
+  const accessToken = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  res.status(201).json(new ApiResponse(200, { accessToken, refreshToken, user }, 'User registered successfully'));
+
   if (user) {
     try {
       await sendMail({
@@ -83,10 +124,8 @@ const register = asyncHandler(async (req, res) => {
           </div>
         `,
       });
-
     } catch (error) {
       console.error('Failed to send email:', error);
-      // Optionally, you can decide whether to still send 201 or throw an error
     }
   }
 });
@@ -118,39 +157,52 @@ const login = asyncHandler(async (req, res) => {
   user.loginLogs.push(new Date());
   await user.save();
 
-  // Create JWT token
-  // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  const token = jwt.sign(
-    { id: user._id },
-    process.env.JWT_SECRET,
-    { expiresIn: '1d' } // or '2h', '7d' etc.
-  );
+  const accessToken = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
 
-  res.json(new ApiResponse(200, { token, id: user._id, isAdmin: user.isAdmin }, 'Login successful'));
+  res.json(new ApiResponse(200, { accessToken, refreshToken, id: user._id, isAdmin: user.isAdmin }, 'Login successful'));
 });
 
-// Logout user
-// const logout = asyncHandler(async (req, res) => {
-//   res.clearCookie('token');
-//   res.json(new ApiResponse(200, null, 'Logout successful'));
-// });
+// Refresh Access Token using Refresh Token
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken: refreshTokenFromClient } = req.body;
+
+  if (!refreshTokenFromClient) {
+    throw new ApiError(400, 'Refresh token is required');
+  }
+
+  try {
+    // Verify the refresh token
+    const decoded = jwt.verify(refreshTokenFromClient, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
+
+    const newAccessToken = generateToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    res.json(new ApiResponse(200, { accessToken: newAccessToken, refreshToken: newRefreshToken }, 'Token refreshed successfully'));
+  } catch (error) {
+    throw new ApiError(400, 'Invalid or expired refresh token');
+  }
+});
+
+// Logout user (add to blacklist)
 const logout = asyncHandler(async (req, res) => {
   const authHeader = req.headers.authorization;
-  console.log('Auth Header:', authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new ApiError(400, 'Authorization token not provided');
   }
 
-
   const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-
       ignoreExpiration: true, // Allows blacklisting even if token has expired
     });
-    console.log("Decoded JWT:", decoded); // <-- ADD THIS
 
     if (!decoded?.id || !decoded?.exp) {
       throw new ApiError(400, 'Invalid token structure');
@@ -165,28 +217,20 @@ const logout = asyncHandler(async (req, res) => {
     // Add token to blacklist for invalidation
     await BlacklistedToken.create({ token, expiresAt });
 
-    // Optionally clear any saved refresh tokens if used
     await User.findByIdAndUpdate(decoded.id, {
       $unset: { refreshToken: 1 },
     });
 
-    // Send clean logout response
     return res
       .status(200)
       .clearCookie('accessToken')
       .clearCookie('refreshToken')
       .json(new ApiResponse(200, null, 'Logged out successfully'));
-
   } catch (error) {
     console.error('Logout error:', error.message);
     throw new ApiError(400, 'Invalid or expired token');
   }
 });
-
-
-
-
-
 
 // Update user profile (for admin)
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -240,4 +284,13 @@ const deleteUser = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, 'User deleted successfully'));
 });
 
-export { register, login, logout, updateUserProfile, deleteUser };
+export {
+  register,
+  login,
+  refreshToken,
+  logout,
+  updateUserProfile,
+  deleteUser,
+  verifyToken,
+  generateToken,
+};
