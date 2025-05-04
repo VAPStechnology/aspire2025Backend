@@ -7,11 +7,6 @@ const formSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    formNumber: {
-      type: Number,
-      required: true,
-      default: 700,
-    },
     data: {
       type: Object, // You can replace this with a more detailed schema if desired
       required: true,
