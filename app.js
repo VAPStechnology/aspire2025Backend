@@ -13,6 +13,7 @@ import authRouter from './routes/auth.routes.js';
 import userRouter from './routes/user.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import contactRoutes from './routes/contact.routes.js';
+import agreementRoutes from './routes/agreement.routes.js';
 
 // Utils
 import connectDB from './config/dbConnect.js';
@@ -61,6 +62,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/contact', contactRoutes);
+app.use('/api/agreement', agreementRoutes)
 
 
 // 404 handler (for invalid routes)

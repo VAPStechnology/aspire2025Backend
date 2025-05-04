@@ -2,6 +2,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import Form from "../models/form.model.js";
+import Agreement from "../models/agreement.model.js";
+import mongoose from "mongoose";
 
 // @desc    Create a new form
 // @route   POST /api/forms
@@ -79,6 +81,12 @@ const updateForm = asyncHandler(async (req, res) => {
 const submitForm = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const form = await Form.findById(id);
+  // agreement is required to submit the form
+  const userAgreement = await Agreement.findOne({user: new mongoose.Types.ObjectId(req.user._id)});
+  // console.log(userAgreement);
+  if (!userAgreement) { 
+    throw new ApiError(403, 'User agreement not found to submit this form');
+  }
 
   if (!form) {
     throw new ApiError(404, 'Form not found');
