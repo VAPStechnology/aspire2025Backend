@@ -16,7 +16,7 @@ import contactRoutes from './routes/contact.routes.js';
 
 // Utils
 import connectDB from './config/dbConnect.js';
-import  ApiError  from './utils/ApiError.js';
+import ApiError from './utils/ApiError.js';
 import { initSocket } from './socket.js';
 
 const app = express();
@@ -35,9 +35,11 @@ connectDB();
 
 // CORS Configuration for credentials
 const corsOptions = {
-    origin: 'http://localhost:5173',  // Your frontend URL
-    credentials: true,                // Allow credentials (cookies, etc.)
-  };
+    origin: (origin, callback) => {
+        callback(null, true); // Accept any origin
+    },
+    credentials: true, // Allow cookies, authorization headers, etc.              // Allow credentials (cookies, etc.)
+};
 
 // Middleware
 app.use(cors(corsOptions));
