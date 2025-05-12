@@ -102,10 +102,12 @@ const register = asyncHandler(async (req, res) => {
       await sendMail({
         to: email,
         subject: 'Your Account Credentials',
-        text: `Hello ${name}, your login email is ${email} and password is ${password}.`, // fallback plain text
+        text: `Hello ${name}, your login email is ${email} and password is ${password}.`, // fallback plain text 
         html: `
           <div style="font-family: Arial, sans-serif; color: #333;">
             <h2>Welcome to Our Platform, ${name}!</h2>
+            <p>Thank you for registering with us. We are excited to have you on board!</p>
+            <p>To get started, please use the following credentials to log in</p>
             <p>Here are your login credentials:</p>
             <table style="border-collapse: collapse;">
               <tr>
