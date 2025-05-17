@@ -122,7 +122,7 @@ const register = asyncHandler(async (req, res) => {
             <br/>
             <a href="${process.env.FRONTEND_URL}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Login Now</a>
             <br/><br/>
-            <p>Thank you,<br/>Team aspirecarrerconsultency</p>
+            <p>Thank you,<br/>Team aspirecareerconsultancy</p>
           </div>
         `,
       });
